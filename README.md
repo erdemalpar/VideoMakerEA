@@ -15,7 +15,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 
   <br><br>
   
-  ![Version](https://img.shields.io/badge/Sürüm-v3.15.1-orange?style=flat-square)
+  ![Version](https://img.shields.io/badge/Sürüm-v3.15.2-orange?style=flat-square)
   ![Status](https://img.shields.io/badge/Durum-Kararlı-green?style=flat-square)
   ![Tech](https://img.shields.io/badge/Teknoloji-FFmpeg.wasm-blue?style=flat-square)
 
