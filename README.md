@@ -25,7 +25,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 
 ## 🌟 Özellikler
 
-*   **🛡️ Garantili Kare Kaydı (v3.14+):** Bilgisayarınız yavaşlasa bile video asla donmaz. Kare-kare işleme teknolojisi ile %100 akıcı sonuç.
+*   **🛡️ Garantili Kare Kaydı (v3.15+):** Bilgisayarınız yavaşlasa bile video asla donmaz. Kare-kare işleme teknolojisi ile %100 akıcı sonuç.
 *   **👻 Hayalet Buton Teknolojisi:** Sorunsuz dosya yükleme deneyimi.
 *   **🎨 Modern Arayüz:** Sürükle-bırak desteği, canlı önizleme ve görsel zaman çizelgesi.
 *   **🎵 Müzik Desteği:** MP3 dosyalarınızı yükleyin ve videoya senkronize edin.

@@ -111,7 +111,7 @@
     <!-- Versiyon Bilgisi -->
     <div
         class="absolute top-2 right-2 md:top-5 md:right-5 bg-white/90 backdrop-blur text-orange-600 px-4 py-1.5 rounded-full font-mono text-sm font-bold border-2 border-orange-200 shadow-md transform hover:scale-105 transition-all cursor-default z-50">
-        v3.15.6
+        v3.25
     </div>
 
     <!-- Başlık -->
@@ -392,6 +392,12 @@
         let trimEnd = 0;
         let recordedBlob = null;
 
+        // v3.22: Eksik Global Değişkenler Eklendi
+        let isCreatingVideo = false;
+        let creationInterval = null;
+        let creationRecorder = null;
+        let creationAudioSource = null;
+
         // --- Logger ---
         function logAction(action, details = '') {
             const time = new Date().toLocaleTimeString();
@@ -643,7 +649,7 @@
                 emptyState.classList.add('hidden');
                 document.getElementById('previewBtn').disabled = false;
                 document.getElementById('createBtn').disabled = false;
-                updateTotalTime();
+                updateTotalTimeDisplay(); // v3.25: Yeni fonksiyona yönlendir
             } else {
                 emptyState.classList.remove('hidden');
                 document.getElementById('previewBtn').disabled = true;
@@ -652,6 +658,97 @@
         }
 
         // --- Müzik İşlemleri & Kırpma ---
+
+        // --- v3.24: Toplam Süre Göstergesi (Saniye) ---
+        function updateTotalTimeDisplay() {
+            const display = document.getElementById('totalDuration');
+            if (!display) return;
+
+            let totalSec = 0;
+            // Müzik varsa süre müzik kadardır
+            if (typeof audioBuffer !== 'undefined' && audioBuffer) {
+                totalSec = trimEnd - trimStart;
+            } else {
+                // Müzik yoksa resim sayısı * süre
+                totalSec = (slides.length * slideDuration) / 1000;
+            }
+
+            display.innerText = totalSec.toFixed(1) + " saniye";
+        }
+
+        // --- SÜRE SENKRONİZASYONU (v3.18) ---
+        function toggleFitMode() {
+            const fit = document.getElementById('fitToMusic').checked;
+            const hint = document.getElementById('fitModeHint');
+            const dInput = document.getElementById('durationInput');
+
+            if (fit) {
+                hint.innerText = "Her resim eşit sürede gösterilir (Otomatik).";
+                dInput.disabled = true;
+                dInput.classList.add('bg-gray-100', 'text-gray-500');
+                dInput.classList.remove('bg-white', 'text-gray-800');
+                syncDurationToMusic(); // Hemen eşitle
+            } else {
+                hint.innerText = "Müzik bitene kadar resimler tekrar eder (Döngü).";
+                dInput.disabled = false;
+                dInput.classList.remove('bg-gray-100', 'text-gray-500');
+                dInput.classList.add('bg-white', 'text-gray-800');
+                // Mevcut değeri kullan
+                slideDuration = parseFloat(dInput.value) * 1000;
+                updateTotalTimeDisplay(); // Loop'a geçince süre değişebilir (müzik yoksa)
+            }
+        }
+
+        function updateDuration(val) {
+            const fit = document.getElementById('fitToMusic').checked;
+            if (fit) return;
+
+            let current = parseFloat(document.getElementById('durationInput').value);
+
+            if (typeof val === 'string') {
+                current = parseFloat(val);
+            } else {
+                current += val;
+            }
+
+            // Floating point fix ve 3 hane
+            current = Math.round(current * 1000) / 1000;
+
+            if (current < 0.05) current = 0.05;
+
+            // v3.20: 3 Hane Gösterim
+            document.getElementById('durationInput').value = current.toFixed(3);
+            slideDuration = current * 1000;
+            updateTotalTimeDisplay(); // v3.24: Güncelle
+        }
+
+        function syncDurationToMusic() {
+            // Checkbox kontrolü (v3.18: Loop modundaysak dokunma)
+            const fitCheckbox = document.getElementById('fitToMusic');
+            if (fitCheckbox && !fitCheckbox.checked) {
+                updateTotalTimeDisplay(); // v3.24: Loop modunda da güncelle (resim sayısı değişince total değişir mi? Müzik varsa hayır)
+                return;
+            }
+
+            // Müzik yoksa veya resim yoksa işlem yapma
+            if (!audioBuffer || slides.length === 0) {
+                updateTotalTimeDisplay(); // v3.24: Müzik yoksa güncelle
+                return;
+            }
+
+            const musicDuration = trimEnd - trimStart;
+            // Müzik süresini (ms) resim sayısına böl
+            const msPerSlide = (musicDuration * 1000) / slides.length;
+            // v3.20: Yüksek Hassasiyet (Float kullan, yuvarlama yapma)
+            const finalDuration = Math.max(50, msPerSlide);
+
+            slideDuration = finalDuration;
+
+            const dInput = document.getElementById('durationInput');
+            if (dInput) dInput.value = (finalDuration / 1000).toFixed(3); // 3 hane hassasiyet
+
+            updateTotalTimeDisplay(); // v3.24: Güncelle
+        }
 
         function initTrimUI(duration) {
             const trimArea = document.getElementById('trimArea');
@@ -668,6 +765,7 @@
             document.getElementById('musicTotalDurationLabel').innerText = duration.toFixed(1) + "s";
 
             updateTrimValues(); // Barı ilk kez çiz
+            syncDurationToMusic(); // v3.17: İlk yüklemede eşitle
         }
 
         function updateTrimValues() {
@@ -698,6 +796,8 @@
             }
 
             logAction("Müzik Kırpıldı", `Başlangıç: ${trimStart}s, Bitiş: ${trimEnd}s`);
+            syncDurationToMusic(); // v3.17: Kırpma değişince eşitle
+            updateTotalTimeDisplay(); // v3.24
         }
 
         async function handleMusicSelection(val) {
@@ -810,18 +910,7 @@
             showCustomAlert(`Süre müziğe göre ayarlandı! Her resim: ${newDuration.toFixed(1)} saniye.`);
         }
 
-        function updateTotalTime() {
-            if (slides.length === 0) {
-                document.getElementById('totalDuration').innerText = "00:00";
-                return;
-            }
-            // Toplam süre = (Resim Sayısı * Süre)
-            const totalSeconds = slides.length * (slideDuration / 1000);
-            const mins = Math.floor(totalSeconds / 60);
-            const secs = Math.floor(totalSeconds % 60);
-            document.getElementById('totalDuration').innerText =
-                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
+        // v3.25: Eski updateTotalTime fonksiyonu kaldırıldı. Artık updateTotalTimeDisplay kullanılıyor.
 
         // --- Çizim Motoru (Rendering Engine) ---
 
@@ -829,14 +918,30 @@
             if (slides.length === 0) return;
 
             const totalSlideTime = slideDuration;
-            let slideIndex = Math.floor(currentTime / totalSlideTime);
-            let timeInSlide = currentTime % totalSlideTime;
 
-            // Güvenlik Kontrolü: Index sınırları
-            if (slideIndex < 0) slideIndex = 0;
-            if (slideIndex >= slides.length) {
-                slideIndex = slides.length - 1;
-                timeInSlide = totalSlideTime; // Son karede kal
+            // v3.18: Loop Modu Kontrolü
+            const fitCheckbox = document.getElementById('fitToMusic');
+            // Not: audioBuffer global değişkenine erişiyoruz
+            const isLoopMode = fitCheckbox && !fitCheckbox.checked && (typeof audioBuffer !== 'undefined' && audioBuffer);
+
+            let slideIndex;
+            let timeInSlide;
+
+            if (isLoopMode) {
+                // Döngü Mantığı
+                slideIndex = Math.floor(currentTime / totalSlideTime) % slides.length;
+                timeInSlide = currentTime % totalSlideTime;
+            } else {
+                // Normal Mantık
+                slideIndex = Math.floor(currentTime / totalSlideTime);
+                timeInSlide = currentTime % totalSlideTime;
+
+                // Güvenlik Kontrolü: Index sınırları
+                if (slideIndex < 0) slideIndex = 0;
+                if (slideIndex >= slides.length) {
+                    slideIndex = slides.length - 1;
+                    timeInSlide = totalSlideTime; // Son karede kal
+                }
             }
 
             // Mevcut Slide Verisi
@@ -1109,10 +1214,10 @@
 
         // --- Video Oluşturma (WebM Kaydı) ---
 
-        // İptal işlemi için global referanslar
-        let creationInterval = null;
-        let creationRecorder = null;
-        let creationAudioSource = null;
+        // İptal işlemi için global referanslar (v3.22 ile tepeye taşındı)
+        // let creationInterval = null;
+        // let creationRecorder = null;
+        // let creationAudioSource = null;
 
         // UI Kilitleme/Açma Yardımcısı
         function toggleUIInteractivity(active) {
@@ -1187,11 +1292,21 @@
         // --- Video Oluşturma (Garantili Kare Kaydı v3.14) ---
         async function createVideo() {
             logAction("Video Oluşturma Başladı (Garantili Mod)");
-            if (slides.length === 0) {
-                showCustomAlert("Fotoğraf yok!");
+            if (isCreatingVideo) return; // Çifte tıklama önlemi
+
+            // v3.21: Müzik Bütünlük Kontrolü
+            const musicVal = document.getElementById('musicSelect').value;
+            if (musicVal !== 'none' && (!audioBuffer || !audioBuffer.duration)) {
+                showCustomAlert("Hata: Müzik verisi hafızada bulunamadı!\n\nLütfen farklı bir müzik seçin veya sayfayı yenileyin.");
                 return;
             }
 
+            if (slides.length === 0) {
+                showCustomAlert("Lütfen önce en az bir fotoğraf ekleyin.");
+                return;
+            }
+
+            isCreatingVideo = true;
             // UI Kilitle
             toggleUIInteractivity(false);
 
@@ -1256,7 +1371,30 @@
             // Frame Döngüsü (Sabit Adım - Garantili Süre)
             const fps = 30;
             const frameTime = 1000 / fps; // ~33.33ms
-            const totalDuration = slides.length * slideDuration; // ms
+
+            // v3.19: Süre Hesabı ve Debug
+            let totalDuration;
+            let usingMusicDuration = false;
+
+            // Global audioBuffer değişkenini kontrol et
+            if (typeof audioBuffer !== 'undefined' && audioBuffer) {
+                // Müzik varsa süre her zaman müzik kadardır (ister Sync ister Loop olsun)
+                totalDuration = (trimEnd - trimStart) * 1000;
+                usingMusicDuration = true;
+            } else {
+                // Müzik yoksa slayt sayısı * süre
+                totalDuration = slides.length * slideDuration;
+            }
+
+            // Güvenlik: Süre çok kısaysa (örn. 0) varsayılana dön
+            if (!totalDuration || totalDuration < 1000) totalDuration = slides.length * 3000;
+
+            logAction("Video Süresi Hesaplanıyor",
+                `Kaynak: ${usingMusicDuration ? 'Müzik (' + (totalDuration / 1000).toFixed(1) + 's)' : 'Slaytlar'}, ` +
+                `Toplam Süre: ${totalDuration.toFixed(0)}ms, ` +
+                `Loop Modu: ${document.getElementById('fitToMusic') && !document.getElementById('fitToMusic').checked ? 'AKTİF' : 'PASİF'}`
+            );
+
             let currentFrame = 0;
 
             function loop() {
@@ -1289,6 +1427,11 @@
 
             // Döngüyü başlat
             loop();
+
+            // Sürükle ve Bırak Desteği Başlat
+            // initDragAndDrop(); // This line is not in the original code, skipping.
+
+            // syncDurationToMusic(); // v3.17: Resim sayısı değişince eşitle // This line is requested to be added to renderImageList, not createVideo.
 
             btn.innerHTML = '<i class="fas fa-times mr-2"></i> İptal Et';
             btn.classList.replace('bg-green-600', 'bg-red-600');
@@ -1343,9 +1486,12 @@
                 if (pStatus) pStatus.innerText = "Ses ve Görüntü Birleştiriliyor...";
 
                 // 3. Birleştir (Video + Ses -> MP4)
+                // 3. Birleştir (Video + Ses -> MP4)
                 await ffmpeg.run(
                     '-i', 'video.webm',
                     '-stream_loop', '-1', '-i', 'audio.wav',  // Sesi döngüye al
+                    '-filter:v', 'setpts=N/30/TB',             // ZAMAN SIKILAŞTIRMA: Lagları sil, 30fps'e zorla
+                    '-r', '30',                                // Çıktı kare hızı
                     '-c:v', 'libx264', '-preset', 'ultrafast', // Videoyu MP4 yap
                     '-c:a', 'aac', '-b:a', '192k',             // Sesi AAC yap
                     '-shortest',                               // En kısa olanda bitir (Video süresi)
@@ -1503,7 +1649,7 @@
         }
 
         function showSoundsPath() {
-            const path = "/Users/erdem/.gemini/antigravity/scratch/VideoMakerEA/sounds";
+            const path = "/Downloads/VideoMakerEA/sounds";
             logAction("Sounds Yolu İstendi");
             prompt("Sounds klasör yolu (Kopyalamak için Ctrl+C / Cmd+C):", path);
         }
