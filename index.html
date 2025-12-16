@@ -111,7 +111,7 @@
     <!-- Versiyon Bilgisi -->
     <div
         class="absolute top-2 right-2 md:top-5 md:right-5 bg-white/90 backdrop-blur text-orange-600 px-4 py-1.5 rounded-full font-mono text-sm font-bold border-2 border-orange-200 shadow-md transform hover:scale-105 transition-all cursor-default z-50">
-        v3.15.2
+        v3.15.5
     </div>
 
     <!-- Başlık -->
@@ -216,7 +216,7 @@
                     </button>
 
                     <button onclick="createVideo()" id="createBtn"
-                        class="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm md:text-base">
+                        class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm md:text-base">
                         <i class="fas fa-film mr-2"></i> Oluştur & İndir
                     </button>
                 </div>
@@ -1139,8 +1139,13 @@
             });
         }
 
-        function cancelVideoCreation() {
-            logAction("Video Oluşturma Temizliği/İptali");
+        function cancelVideoCreation(silent = false) {
+            logAction("Video Oluşturma Temizliği/İptali", silent ? "Sessiz" : "Sesli");
+
+            // Global durumları sıfırla
+            isCreatingVideo = false;
+            isPreviewing = false;
+
             if (creationInterval) clearInterval(creationInterval);
 
             if (creationRecorder && creationRecorder.state !== 'inactive') {
@@ -1153,12 +1158,24 @@
             }
 
             // UI Reset
-            document.getElementById('loadingOverlay').classList.add('hidden');
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.add('hidden');
 
-            showCustomAlert("Video oluşturma işlemi iptal edildi.");
-            logAction("İşlem İptal Edildi");
+            // Butonu eski haline getir
+            const btn = document.getElementById('createBtn');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-film mr-2"></i> Oluştur & İndir';
+                // Classları sıfırla (Tailwind classlarını manuel set ediyoruz)
+                btn.className = "flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm md:text-base";
+                btn.onclick = createVideo;
+            }
 
-            isPreviewing = false;
+            if (!silent) {
+                showCustomAlert("Video oluşturma işlemi iptal edildi.");
+                logAction("İşlem İptal Edildi");
+            } else {
+                logAction("İşlem Tamamlandı (Temizlik Yapıldı)");
+            }
 
             // UI Kilidini Aç
             toggleUIInteractivity(true);
@@ -1341,9 +1358,12 @@
                 const mp4Url = URL.createObjectURL(mp4Blob);
 
                 // İndir
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+
                 const a = document.createElement('a');
                 a.href = mp4Url;
-                a.download = `VideoMaker_v3.14_${new Date().getTime()}.mp4`;
+                a.download = `VideoMaker_EA_${timestamp}.mp4`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -1353,7 +1373,7 @@
                 if (pBar) pBar.style.width = '100%';
                 if (pPercent) pPercent.innerText = '100%';
 
-                showCustomAlert(`Video başarıyla oluşturuldu!\nİndirme otomatik başlatıldı.`);
+                showCustomAlert(`Harika! Videonuz hazır.\n\nBilgisayarınızın "İndirilenler" (Downloads) klasörüne otomatik olarak kaydedildi.`);
 
                 // Başarılı bitiş: Sessizce UI'ı sıfırla
                 cancelVideoCreation(true);
