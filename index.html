@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Maker EA</title>
+
+    <!-- 1. Yedek Statik CSS (Güvenlik Duvarına Takılmaz) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet"
+        crossorigin="anonymous">
+
+    <!-- 2. Akıllı Script (Çalışırsa ne ala, çalışmazsa üstteki devreye girer) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FFmpeg & Icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.11.6/ffmpeg.min.js" crossorigin="anonymous"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' }
+                    },
+                    animation: {
+                        'spin-slow': 'spin 3s linear infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #fff7ed;
+            /* Orange-50 */
+        }
+
+        h1,
+        h2 {
+            font-family: 'Patrick Hand', cursive;
+        }
+
+        .upload-box {
+            border: 3px dashed #f97316;
+            transition: all 0.3s ease;
+        }
+
+        .upload-box.drag-active {
+            background-color: #ffedd5;
+            border-color: #c2410c;
+            transform: scale(1.02);
+        }
+
+        .upload-box:hover {
+            background-color: #fff7ed;
+            border-color: #ea580c;
+        }
+
+        canvas {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ea580c;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom Input Range */
+        input[type=range] {
+            height: 6px;
+            background: #fed7aa;
+            border-radius: 5px;
+            background-image: linear-gradient(#ea580c, #ea580c);
+            background-repeat: no-repeat;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ea580c;
+            cursor: pointer;
+            box-shadow: 0 0 2px 0 #555;
+            transition: background .3s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center py-10 px-4 relative">
+    <!-- Versiyon Bilgisi -->
+    <div
+        class="absolute top-2 right-2 md:top-5 md:right-5 bg-white/90 backdrop-blur text-orange-600 px-4 py-1.5 rounded-full font-mono text-sm font-bold border-2 border-orange-200 shadow-md transform hover:scale-105 transition-all cursor-default z-50">
+        v3.14
+    </div>
+
+    <!-- Başlık -->
+    <header class="text-center mb-8">
+        <h1 class="text-5xl text-orange-800 mb-2 drop-shadow-sm">Video Maker EA</h1>
+        <p class="text-orange-600 font-medium">Öğrencilerinizin fotoğraflarını harika bir videoya dönüştürün.</p>
+    </header>
+
+    <main
+        class="w-full max-w-[95%] bg-white rounded-3xl shadow-xl p-6 border-b-8 border-orange-200 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- SOL PANEL: Fotoğraflar (3 birim) -->
+        <div class="lg:col-span-3 flex flex-col h-full bg-orange-50/50 rounded-2xl p-4 border border-orange-100">
+            <div class="flex items-center justify-between mb-4 shrink-0">
+                <label class="text-xl font-bold text-gray-800"><i class="fas fa-camera text-orange-500 mr-2"></i>
+                    Fotoğraflar</label>
+                <span id="imageCountBadge" class="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">0
+                    adet</span>
+            </div>
+
+            <!-- Yükleme Kutusu -->
+            <div class="upload-box rounded-xl p-4 text-center cursor-pointer relative flex flex-col items-center justify-center bg-white shadow-sm mb-4 shrink-0 hover:bg-orange-50 transition border border-dashed border-orange-300"
+                id="imgDropZone" onclick="document.getElementById('imageInput').click()">
+
+                <input type="file" id="imageInput" multiple accept="image/*" class="hidden"
+                    onchange="handleImageUpload(event)">
+                <div class="text-orange-500 mb-1">
+                    <i class="fas fa-plus-circle text-2xl"></i>
+                </div>
+                <p class="text-sm text-gray-700 font-bold">Fotoğraf Ekle</p>
+                <p class="text-[10px] text-gray-400">veya sürükle bırak</p>
+            </div>
+
+            <!-- Resim Listesi Başlık (Tümünü Seç) -->
+            <div id="listHeader"
+                class="hidden flex items-center justify-between bg-gray-100 p-2 rounded-t-lg border-b border-gray-200 shrink-0">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="selectAllUI" checked onchange="toggleSelectAll(this.checked)"
+                        class="w-4 h-4 text-orange-600 rounded focus:ring-orange-500 cursor-pointer">
+                    <label for="selectAllUI" class="text-xs font-bold text-gray-600 cursor-pointer select-none">Tümünü
+                        Seç</label>
+                </div>
+                <button onclick="clearAllImages()" class="text-xs text-red-500 hover:text-red-700 font-medium">
+                    <i class="fas fa-trash-alt"></i> Temizle
+                </button>
+            </div>
+
+            <!-- Resim Listesi (Scrollable) -->
+            <div id="imageList"
+                class="hidden flex-1 overflow-y-auto bg-white rounded-b-lg border border-gray-100 shadow-inner p-2 space-y-2 custom-scrollbar"
+                style="max-height: 400px;">
+                <!-- Javascript ile doldurulacak -->
+            </div>
+        </div>
+
+        <!-- ORTA PANEL: Önizleme ve İşlemler (6 birim) -->
+        <div class="lg:col-span-6 flex flex-col gap-6">
+            <div
+                class="flex flex-col items-center bg-gray-900 rounded-2xl p-4 shadow-inner relative overflow-hidden w-full">
+
+                <!-- Canvas -->
+                <div
+                    class="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl border-2 border-gray-700 mb-6">
+                    <canvas id="previewCanvas" width="1280" height="720" class="w-full h-full object-contain"></canvas>
+
+                    <!-- Overlay: Yükleniyor -->
+                    <div id="processingOverlay"
+                        class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-white hidden z-20">
+                        <div class="loader mb-4"></div>
+                        <p id="processStatus" class="font-medium animate-pulse text-lg">Video hazırlanıyor...</p>
+                        <div class="w-2/3 bg-gray-800 rounded-full h-3 mt-6 mb-4 overflow-hidden">
+                            <div id="progressBar"
+                                class="bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-500 h-full w-0 transition-all duration-200">
+                            </div>
+                        </div>
+
+                        <button onclick="cancelVideoCreation()"
+                            class="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
+                            <i class="fas fa-times"></i> İptal Et
+                        </button>
+
+                        <p class="text-xs text-gray-400 mt-4">Bu işlem bilgisayar hızınıza göre zaman alabilir.</p>
+                    </div>
+
+                    <!-- Overlay: Boş Durum -->
+                    <div id="emptyState"
+                        class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none p-4 text-center">
+                        <i class="fas fa-photo-video text-6xl mb-4 opacity-30"></i>
+                        <p class="text-gray-400">Başlamak için sol panelden fotoğraf ekleyin</p>
+                    </div>
+                </div>
+
+                <!-- Butonlar -->
+                <div class="flex flex-wrap justify-center gap-4 w-full">
+                    <button onclick="togglePreview()" id="previewBtn"
+                        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm md:text-base">
+                        <i class="fas fa-play mr-2"></i> Önizle
+                    </button>
+
+                    <button onclick="createVideo()" id="createBtn"
+                        class="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm md:text-base">
+                        <i class="fas fa-film mr-2"></i> Oluştur & İndir
+                    </button>
+                </div>
+
+                <!-- İndirme Alanı -->
+                <div id="downloadArea" class="hidden mt-6 w-full">
+                    <div class="flex flex-row gap-4">
+                        <a id="downloadLink" href="#" download="video.webm"
+                            class="flex-1 bg-green-600 hover:bg-green-500 text-white p-3 rounded-xl shadow-lg text-center block font-bold text-sm md:text-base transition-transform hover:scale-105">
+                            <i class="fas fa-download mr-1"></i> WebM (Hızlı)
+                        </a>
+
+                        <button onclick="convertToMp4()" id="mp4Btn"
+                            class="flex-1 bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl shadow-lg text-center block font-bold text-sm md:text-base transition-transform hover:scale-105">
+                            <i class="fas fa-file-video mr-1"></i> MP4 (Dönüştür)
+                        </button>
+                    </div>
+
+                    <div id="mp4Status"
+                        class="hidden mt-3 text-white text-center text-xs font-medium bg-gray-800/50 p-2 rounded-lg">
+                        <i class="fas fa-cog fa-spin mr-2"></i> <span id="mp4StatusText">MP4'e dönüştürülüyor...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SAĞ PANEL: Müzik ve Ayarlar (3 birim) -->
+        <div class="lg:col-span-3 flex flex-col gap-4 bg-blue-50/50 rounded-2xl p-4 border border-blue-100">
+            <label class="text-xl font-bold text-gray-800 mb-2"><i class="fas fa-music text-orange-500 mr-2"></i>
+                Ayarlar</label>
+
+            <!-- Müzik Seçimi -->
+            <div class="bg-white p-3 rounded-xl border border-orange-100 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-bold text-gray-700">Müzik Kaynağı:</label>
+                    <button onclick="showSoundsPath()" title="Sounds klasörü nerede? (Yolu Gör)"
+                        class="w-5 h-5 flex items-center justify-center rounded bg-gray-100 text-gray-500 hover:bg-orange-100 hover:text-orange-600 transition text-[10px]">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                </div>
+                <select id="musicSelect" onchange="handleMusicSelection(this.value)"
+                    class="w-full p-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-400 mb-2 text-sm bg-orange-50">
+                    <option value="none">Müzik Yok</option>
+                    <option value="custom">📁 Bilgisayarımdan Yükle (MP3)</option>
+                    <optgroup label="Yerel Müzikler (Sounds Klasörü)">
+                        <option value="sound_yerlimali1">🍎 Yerli Malı Şarkısı 1</option>
+                        <option value="sound_yerlimali2">🍇 Yerli Malı Şarkısı 2</option>
+                        <option value="sound_yerlimali3">🍊 Yerli Malı Şarkısı 3</option>
+                        <option value="sound_kindergarten">🧸 Anaokulu</option>
+                        <option value="sound_morning">☀️ Sabah Neşesi</option>
+                        <option value="sound_nature">🍃 Doğa Belgeseli</option>
+                        <option value="sound_country">🎻 Country</option>
+                        <option value="sound_zumba">🦓 Zumba</option>
+                    </optgroup>
+                </select>
+
+                <!-- Custom Upload Area -->
+                <div id="customAudioArea" class="hidden">
+                    <div class="border-2 border-dashed border-orange-300 rounded-lg p-2 text-center cursor-pointer hover:bg-orange-50 transition"
+                        onclick="document.getElementById('audioInput').click()">
+                        <input type="file" id="audioInput" accept="audio/*" class="hidden"
+                            onchange="handleAudioUpload(event)">
+                        <p class="text-xs text-gray-600" id="audioFileName">Dosya seç</p>
+                    </div>
+                </div>
+                <p id="audioStatusText" class="text-xs text-orange-600 mt-1 font-medium hidden">Seçildi: <span
+                        id="currentSongName"></span></p>
+
+                <!-- Müziği Kırpma Alanı -->
+                <div id="trimArea" class="hidden mt-3 pt-3 border-t border-orange-100">
+                    <label class="block text-xs font-bold text-gray-600 mb-2">Müzik Kırpma & Görselleştirme</label>
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="flex-1">
+                            <label class="text-[10px] text-gray-500">Başlangıç (sn)</label>
+                            <input type="number" id="trimStartInput" value="0" min="0" step="0.1"
+                                class="w-full p-1 text-xs border rounded bg-gray-50 bg-white"
+                                onchange="updateTrimValues()">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] text-gray-500">Bitiş (sn)</label>
+                            <input type="number" id="trimEndInput" value="0" min="0" step="0.1"
+                                class="w-full p-1 text-xs border rounded bg-gray-50 bg-white"
+                                onchange="updateTrimValues()">
+                        </div>
+                    </div>
+
+                    <!-- Görsel Timeline -->
+                    <div class="relative w-full h-6 bg-gray-200 rounded overflow-hidden mt-1 border border-gray-300">
+                        <!-- Toplam Süre Barı (Gri zaten bg) -->
+                        <!-- Kırpılan Alan (Mavi) -->
+                        <div id="trimRegionBar"
+                            class="absolute top-0 bottom-0 bg-blue-400/50 border-l-2 border-r-2 border-blue-600 h-full transition-all"
+                            style="left: 0%; width: 100%;"></div>
+                        <!-- İlerleme Çubuğu (Kırmızı) -->
+                        <div id="musicPlayhead"
+                            class="absolute top-0 bottom-0 bg-red-600 w-1 h-full hidden z-20 shadow-sm"
+                            style="left: 0%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-gray-500 font-mono mt-1">
+                        <span>0.0s</span>
+                        <span id="musicTotalDurationLabel">--s</span>
+                    </div>
+
+                    <p class="text-[10px] text-gray-400 mt-1">*Mavi alan seçili bölgedir. Video sadece burayı çalar.</p>
+                </div>
+            </div>
+
+            <!-- Süre ve Geçiş Ayarları -->
+            <div class="bg-white p-3 rounded-xl border border-blue-100 shadow-sm flex flex-col gap-4">
+
+                <!-- Süre -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Resim Süresi (Sn)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="durationInput" min="1" max="60" value="3"
+                            class="w-14 p-1 text-center border rounded font-bold text-blue-800 text-sm"
+                            onchange="updateDuration(this.value)">
+                        <input type="range" id="durationSlider" min="1" max="20" step="0.5" value="3"
+                            class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                            oninput="updateDuration(this.value)">
+                        <button onclick="syncDurationWithMusic()" title="Süreyi Müziğe Eşitle"
+                            class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 p-1.5 rounded-lg transition shrink-0">
+                            <i class="fas fa-stopwatch"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Geçiş Efekti (Toplu Uygulama) -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Geçiş Efekti (Seçili Olanlara)</label>
+                    <select id="transitionSelect" onchange="applyBulkTransition(this.value)"
+                        class="w-full p-2 rounded border border-blue-200 text-sm focus:ring-2 focus:ring-blue-300 bg-blue-50">
+                        <option value="none">Keskin (Hızlı)</option>
+                        <option value="fade" selected>Yumuşak (Fade)</option>
+                        <option value="slide_left">⬅️ Sola Kaydır</option>
+                        <option value="slide_right">➡️ Sağa Kaydır</option>
+                        <option value="slide_up">⬆️ Yukarı Kaydır</option>
+                        <option value="slide_down">⬇️ Aşağı Kaydır</option>
+                        <option value="zoom_in">🔍 Yakınlaştır</option>
+                        <option value="zoom_out">🔎 Uzaklaştır</option>
+                        <option value="wipe_left">◀️ Perde (Sola)</option>
+                        <option value="wipe_right">▶️ Perde (Sağa)</option>
+                        <option value="circle_open">⚪ Dairesel Açılma</option>
+                    </select>
+                    <p class="text-[10px] text-gray-500 mt-1">*Bu menü tikli resimlerin hepsini değiştirir.</p>
+                </div>
+
+                <div class="text-center border-t border-gray-100 pt-2">
+                    <span class="text-xs text-gray-500 uppercase">Toplam Süre</span><br>
+                    <span id="totalDuration" class="font-bold text-xl text-blue-900">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gizli Ses Oynatıcı -->
+        <audio id="audioPlayer" class="hidden" loop></audio>
+
+    </main>
+    <footer class="mt-8 text-gray-500 text-sm">© 2026 Video Maker EA - design by erdem</footer>
+
+    <script>
+        // --- Değişkenler ---
+        let slides = []; // { id, img, checked, transition }
+        let audioContext = null;
+        let audioBuffer = null;
+        let activeAudioSource = null; // Çalan sesi kontrol etmek için
+
+        let slideDuration = 3000;
+        let transitionDuration = 1000;
+        let isPreviewing = false;
+        let previewReqId;
+        let trimStart = 0;
+        let trimEnd = 0;
+        let recordedBlob = null;
+
+        // --- Logger ---
+        function logAction(action, details = '') {
+            const time = new Date().toLocaleTimeString();
+            let color = '#f97316'; // Varsayılan Turuncu
+
+            const text = (action + details).toLowerCase();
+
+            // Kırmızı (Hata/İptal)
+            if (text.includes('hata') || text.includes('iptal') || text.includes('sorun') || text.includes('fail')) {
+                color = '#dc2626';
+            }
+            // Yeşil (Başarı/İşlem)
+            else if (text.includes('yüklendi') || text.includes('başla') || text.includes('hazır') || text.includes('tamam') || text.includes('oynat') || text.includes('kırp')) {
+                color = '#16a34a';
+            }
+
+            console.log(`%c[${time}] EYLEM: ${action} ${details ? '-> ' + details : ''}`, `color: ${color}; font-weight: bold;`);
+        }
+
+        // Örnek Müzik URL'leri (Yerel Dosyalar)
+        const SAMPLE_MUSIC = {
+            'sound_yerlimali1': './sounds/yerlimalisarkisi.mp3',
+            'sound_yerlimali2': './sounds/yerlimalisarkisi2.mp3',
+            'sound_yerlimali3': './sounds/yerlimalisarkisi3.mp3',
+            'sound_kindergarten': './sounds/kindergarten-story-invincible-chaos-by-ende-dot-app.mp3',
+            'sound_morning': './sounds/morning-funny-beat-7741.mp3',
+            'sound_nature': './sounds/nature-29-nature-documentary-series-by-ende-dot-app.mp3',
+            'sound_country': './sounds/running-fiddlers-country-band-7742.mp3',
+            'sound_zumba': './sounds/zany-zebra-zumba-295672.mp3'
+        };
+
+        const TRANSITION_OPTS = [
+            { v: 'none', t: 'Keskin (Hızlı)' }, { v: 'fade', t: 'Yumuşak (Fade)' },
+            { v: 'slide_left', t: '⬅️ Sola Kaydır' }, { v: 'slide_right', t: '➡️ Sağa Kaydır' },
+            { v: 'slide_up', t: '⬆️ Yukarı Kaydır' }, { v: 'slide_down', t: '⬇️ Aşağı Kaydır' },
+            { v: 'zoom_in', t: '🔍 Yakınlaştır' }, { v: 'zoom_out', t: '🔎 Uzaklaştır' },
+            { v: 'wipe_left', t: '◀️ Perde (Sola)' }, { v: 'wipe_right', t: '▶️ Perde (Sağa)' },
+            { v: 'circle_open', t: '⚪ Dairesel Açılma' }
+        ];
+
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+        const emptyState = document.getElementById('emptyState');
+        const processOverlay = document.getElementById('processingOverlay');
+        const progressBar = document.getElementById('progressBar');
+        const statusText = document.getElementById('processStatus');
+
+        // Drag & Drop Setup
+        setupDragDrop('imgDropZone', handleImageUpload);
+
+        function setupDragDrop(elementId, handler) {
+            const dropZone = document.getElementById(elementId);
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+            ['dragenter', 'dragover'].forEach(name => dropZone.addEventListener(name, () => dropZone.classList.add('drag-active'), false));
+            ['dragleave', 'drop'].forEach(name => dropZone.addEventListener(name, () => dropZone.classList.remove('drag-active'), false));
+            dropZone.addEventListener('drop', e => {
+                logAction("Dosya Sürüklendi");
+                handler({ target: { files: e.dataTransfer.files } });
+            }, false);
+        }
+
+        // --- Durum Sıfırlama ---
+        function resetVideoState() {
+            if (recordedBlob) {
+                logAction("Video Durumu Sıfırlandı", "Yeni düzenleme yapıldı");
+                recordedBlob = null;
+                document.getElementById('downloadArea').classList.add('hidden');
+                document.getElementById('mp4Status').classList.add('hidden');
+                const mp4Btn = document.getElementById('mp4Btn');
+                mp4Btn.disabled = false;
+                mp4Btn.innerHTML = '<i class="fas fa-file-video mr-2"></i> MP4 (Dönüştür)';
+            }
+        }
+
+        // --- Fotoğraf ve Liste İşlemleri ---
+        function handleImageUpload(event) {
+            const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) return;
+
+            logAction("Fotoğraf Yüklendi", `${files.length} adet dosya`);
+            resetVideoState();
+
+            // Inputu temizle ki aynı dosyayı tekrar seçebilsin
+            const fileInput = event.target;
+
+            let remaining = files.length;
+            const initialSlideCount = slides.length;
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        slides.push({
+                            id: Date.now() + Math.random(),
+                            img: img,
+                            checked: true,
+                            transition: 'fade' // Varsayılan
+                        });
+                        remaining--;
+                        updateUI(); // Badge update
+
+                        if (remaining === 0) {
+                            renderImageList();
+                            // Eğer ilk defa resim yüklendiyse önizlemeyi güncelle
+                            if (initialSlideCount === 0) drawFrame(0);
+                            logAction("Yükleme Tamamlandı", `Toplam ${slides.length} resim`);
+                        }
+                    };
+                    img.onerror = () => {
+                        console.error("Resim yüklenemedi");
+                        remaining--;
+                        if (remaining === 0) renderImageList();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            fileInput.value = ''; // Reset input
+        }
+
+        function renderImageList() {
+            const listContainer = document.getElementById('imageList');
+            const header = document.getElementById('listHeader');
+            const dropZone = document.getElementById('imgDropZone');
+
+            listContainer.innerHTML = '';
+
+            if (slides.length > 0) {
+                // LİSTE VARSA: Upload kutusunu küçült, listeyi göster
+                listContainer.classList.remove('hidden');
+                if (header) header.classList.remove('hidden');
+
+                // Upload Kutusunu Zorla Küçült (Inline Style ile)
+                dropZone.classList.remove('flex-1'); // Flex büyümeyi kapat
+                dropZone.style.minHeight = '80px';   // Minimum yüksekliği azalt
+                dropZone.style.height = 'auto';      // İçeriğe göre yükseklik
+                dropZone.classList.add('mb-2');      // Biraz boşluk
+
+                // Listeyi Görünür Kıl
+                listContainer.style.display = 'block';
+                listContainer.style.flex = '1';      // Kalan alanı kapla
+                listContainer.style.minHeight = '0'; // Taşmayı engelle
+
+            } else {
+                // LİSTE YOKSA: Upload kutusunu büyüt
+                listContainer.classList.add('hidden');
+                if (header) header.classList.add('hidden');
+
+                // Upload Kutusunu Eski Haline Getir
+                dropZone.classList.add('flex-1');
+                dropZone.style.minHeight = '300px';
+                dropZone.style.height = 'auto';
+
+                return;
+            }
+
+            slides.forEach((slide, index) => {
+                const div = document.createElement('div');
+                div.className = `flex items-center gap-3 p-2 border rounded-lg bg-orange-50/50 hover:bg-orange-100 transition shadow-sm ${!slide.checked ? 'opacity-50' : ''}`;
+
+                // Seçenekler HTML
+                let opts = TRANSITION_OPTS.map(o =>
+                    `<option value="${o.v}" ${slide.transition === o.v ? 'selected' : ''}>${o.t}</option>`
+                ).join('');
+
+                div.innerHTML = `
+                    <label class="flex items-center justify-center cursor-pointer p-1">
+                        <input type="checkbox" ${slide.checked ? 'checked' : ''} 
+                            onchange="toggleSlide(${index}, this.checked)"
+                            class="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 cursor-pointer">
+                    </label>
+                    <img src="${slide.img.src}" class="w-12 h-12 object-cover rounded border border-gray-300 bg-white">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-gray-700 truncate">Resim ${index + 1}</p>
+                        <select onchange="updateSlideTrans(${index}, this.value)" 
+                            class="mt-1 w-full text-[10px] p-1 border border-orange-200 rounded bg-white focus:outline-none focus:border-orange-400 cursor-pointer">
+                            ${opts}
+                        </select>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        function toggleSlide(index, isChecked) {
+            logAction("Resim Seçimi Değişti", `Sıra: ${index + 1}, Durum: ${isChecked ? 'Seçildi' : 'Kaldırıldı'}`);
+            slides[index].checked = isChecked;
+            resetVideoState();
+            renderImageList();
+        }
+
+        function toggleSelectAll(isChecked) {
+            logAction("Tümünü Seç/Kaldır", `Durum: ${isChecked ? 'Hepsi Seçili' : 'Hiçbiri'}`);
+            slides.forEach(s => s.checked = isChecked);
+            renderImageList();
+            resetVideoState();
+        }
+
+        function clearAllImages() {
+            if (confirm("Tüm resimler silinecek?")) {
+                logAction("Tüm Resimler Silindi");
+                slides = [];
+                renderImageList();
+                updateUI();
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Canvas temizle
+                document.getElementById('emptyState').classList.remove('hidden');
+            } else {
+                logAction("Silme İşlemi İptal Edildi");
+            }
+        }
+
+        function updateSlideTrans(index, val) {
+            logAction("Resim Efekti Değişti", `Sıra: ${index + 1}, Efekt: ${val}`);
+            slides[index].transition = val;
+            resetVideoState();
+        }
+
+        function applyBulkTransition(val) {
+            let changed = false;
+            let count = 0;
+            slides.forEach(s => {
+                if (s.checked) {
+                    s.transition = val;
+                    changed = true;
+                    count++;
+                }
+            });
+            if (changed) {
+                logAction("Toplu Efekt Uygulandı", `Efekt: ${val}, Etkilenen: ${count} resim`);
+                renderImageList(); // Dropdownları güncellemek için
+                resetVideoState();
+                alert("Seçili tüm resimlerin efekti güncellendi.");
+            } else {
+                logAction("Toplu Efekt Hatası", "Resim seçilmedi");
+                alert("Lütfen önce listeden en az bir resim seçin (tikleyin).");
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('imageCountBadge').innerText = `${slides.length} adet`;
+            if (slides.length > 0) {
+                emptyState.classList.add('hidden');
+                document.getElementById('previewBtn').disabled = false;
+                document.getElementById('createBtn').disabled = false;
+                updateTotalTime();
+            } else {
+                emptyState.classList.remove('hidden');
+                document.getElementById('previewBtn').disabled = true;
+                document.getElementById('createBtn').disabled = true;
+            }
+        }
+
+        // --- Müzik İşlemleri & Kırpma ---
+
+        function initTrimUI(duration) {
+            const trimArea = document.getElementById('trimArea');
+            trimArea.classList.remove('hidden');
+
+            trimStart = 0;
+            trimEnd = duration;
+
+            document.getElementById('trimStartInput').value = 0;
+            document.getElementById('trimStartInput').max = duration;
+
+            document.getElementById('trimEndInput').value = duration.toFixed(1);
+            document.getElementById('trimEndInput').max = duration;
+            document.getElementById('musicTotalDurationLabel').innerText = duration.toFixed(1) + "s";
+
+            updateTrimValues(); // Barı ilk kez çiz
+        }
+
+        function updateTrimValues() {
+            const s = parseFloat(document.getElementById('trimStartInput').value);
+            const e = parseFloat(document.getElementById('trimEndInput').value);
+
+            // Mantık Kontrolü
+            if (s < 0) trimStart = 0;
+            else trimStart = s;
+
+            if (audioBuffer && e > audioBuffer.duration) trimEnd = audioBuffer.duration;
+            else if (e <= trimStart) trimEnd = trimStart + 1; // En az 1 sn
+            else trimEnd = e;
+
+            // UI Input düzeltme
+            document.getElementById('trimStartInput').value = trimStart;
+            document.getElementById('trimEndInput').value = trimEnd;
+
+            // Görsel Bar Güncelleme
+            if (audioBuffer) {
+                const total = audioBuffer.duration;
+                const startPercent = (trimStart / total) * 100;
+                const widthPercent = ((trimEnd - trimStart) / total) * 100;
+
+                const bar = document.getElementById('trimRegionBar');
+                bar.style.left = `${startPercent}%`;
+                bar.style.width = `${widthPercent}%`;
+            }
+
+            logAction("Müzik Kırpıldı", `Başlangıç: ${trimStart}s, Bitiş: ${trimEnd}s`);
+        }
+
+        async function handleMusicSelection(val) {
+            logAction("Müzik Kaynağı Seçildi", val);
+            resetVideoState();
+            const customArea = document.getElementById('customAudioArea');
+            const statusText = document.getElementById('audioStatusText');
+            const songNameSpan = document.getElementById('currentSongName');
+            const trimArea = document.getElementById('trimArea');
+
+            // Reset
+            audioBuffer = null;
+            trimArea.classList.add('hidden');
+            statusText.classList.add('hidden');
+
+            if (val === 'custom') {
+                customArea.classList.remove('hidden');
+            } else {
+                customArea.classList.add('hidden');
+                if (val !== 'none') {
+                    const url = SAMPLE_MUSIC[val];
+                    if (url) {
+                        statusText.classList.remove('hidden');
+                        songNameSpan.innerText = "İndiriliyor...";
+                        try {
+                            const response = await fetch(url);
+                            if (!response.ok) throw new Error(`HTTP Hata: ${response.status}`);
+                            const arrayBuffer = await response.arrayBuffer();
+
+                            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
+                            if (audioContext.state === 'suspended') await audioContext.resume();
+
+                            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                            songNameSpan.innerText = "Hazır (Kırpılabilir)";
+                            logAction("Müzik Yüklendi", val);
+                            initTrimUI(audioBuffer.duration);
+
+                        } catch (e) {
+                            console.error("Müzik Yükleme Hatası:", e);
+                            logAction("Müzik Hatası", e.message);
+                            showCustomAlert("Müzik yüklenemedi.");
+                            songNameSpan.innerText = "Hata";
+                            statusText.classList.add('hidden');
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleAudioUpload(event) {
+            resetVideoState();
+            const file = event.target.files[0];
+            if (!file) return;
+
+            logAction("Özel Müzik Yüklendi", file.name);
+            document.getElementById('audioFileName').innerText = file.name;
+            document.getElementById('audioStatusText').classList.remove('hidden');
+            document.getElementById('currentSongName').innerText = file.name;
+            document.getElementById('trimArea').classList.add('hidden');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
+                    if (audioContext.state === 'suspended') await audioContext.resume();
+
+                    const arrayBuffer = e.target.result.slice(0);
+                    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    initTrimUI(audioBuffer.duration);
+                    logAction("Özel Müzik Hazır", `Süre: ${audioBuffer.duration.toFixed(1)} sn`);
+
+                } catch (err) {
+                    console.error("Ses decode hatası:", err);
+                    logAction("Ses Dosyası Hatası", err.message);
+                    showCustomAlert("Ses dosyası bozuk.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- Ayarlar ---
+        function updateDuration(val) {
+            resetVideoState();
+            val = parseFloat(val);
+            if (val < 0.5) val = 0.5; // Minimum süre
+            document.getElementById('durationInput').value = val.toFixed(1);
+            document.getElementById('durationSlider').value = val;
+            slideDuration = val * 1000;
+            updateTotalTime();
+            logAction("Resim Süresi Değişti", `${val} saniye`);
+        }
+
+        function syncDurationWithMusic() {
+            logAction("Süre Eşitleme İsteği");
+            if (!audioBuffer) {
+                showCustomAlert("Lütfen önce bir müzik seçin veya yükleyin!");
+                return;
+            }
+            if (slides.length === 0) {
+                showCustomAlert("Lütfen en az bir resim ekleyin.");
+                return;
+            }
+
+            const musicDuration = trimEnd - trimStart; // Kırpılmış müzik süresi
+            const newDuration = musicDuration / slides.length;
+
+            // UI Güncelle
+            updateDuration(newDuration);
+            logAction("Süre Eşitlendi", `Her resim: ${newDuration.toFixed(1)} sn`);
+            showCustomAlert(`Süre müziğe göre ayarlandı! Her resim: ${newDuration.toFixed(1)} saniye.`);
+        }
+
+        function updateTotalTime() {
+            if (slides.length === 0) {
+                document.getElementById('totalDuration').innerText = "00:00";
+                return;
+            }
+            // Toplam süre = (Resim Sayısı * Süre)
+            const totalSeconds = slides.length * (slideDuration / 1000);
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = Math.floor(totalSeconds % 60);
+            document.getElementById('totalDuration').innerText =
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // --- Çizim Motoru (Rendering Engine) ---
+
+        function drawFrame(currentTime) {
+            if (slides.length === 0) return;
+
+            const totalSlideTime = slideDuration;
+            let slideIndex = Math.floor(currentTime / totalSlideTime);
+            let timeInSlide = currentTime % totalSlideTime;
+
+            // Güvenlik Kontrolü: Index sınırları
+            if (slideIndex < 0) slideIndex = 0;
+            if (slideIndex >= slides.length) {
+                slideIndex = slides.length - 1;
+                timeInSlide = totalSlideTime; // Son karede kal
+            }
+
+            // Mevcut Slide Verisi
+            const currentSlide = slides[slideIndex];
+
+            // CRASH FIX: Eğer hala undefined ise çık
+            if (!currentSlide) return;
+
+            const nextSlide = slides[slideIndex + 1];
+
+            // Efekt
+            const transitionType = currentSlide.transition || 'fade';
+
+            // Ekranı temizle
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Geçiş Süreci
+            const fadeDuration = 1000;
+            const fadeStart = totalSlideTime - fadeDuration;
+
+            let progress = 0;
+            let inTransition = false;
+
+            if (nextSlide && timeInSlide > fadeStart) {
+                inTransition = true;
+                progress = (timeInSlide - fadeStart) / fadeDuration; // 0 -> 1
+            }
+
+            if (!inTransition || transitionType === 'none') {
+                drawSingleImage(currentSlide.img, 1, { x: 0, y: 0, scale: 1 });
+            } else {
+                // GEÇİŞ EFEKTLERİ MANTIĞI
+
+                // 1. Mevcut Resim (Çıkış Yapan)
+                ctx.save();
+                let currOpacity = 1;
+                let currX = 0, currY = 0, currScale = 1;
+
+                switch (transitionType) {
+                    case 'fade':
+                        currOpacity = 1 - progress;
+                        break;
+                    case 'slide_left':
+                        currX = -progress * canvas.width;
+                        break;
+                    case 'slide_right':
+                        currX = progress * canvas.width;
+                        break;
+                    case 'slide_up':
+                        currY = -progress * canvas.height;
+                        break;
+                    case 'slide_down':
+                        currY = progress * canvas.height;
+                        break;
+                    case 'zoom_in':
+                        currScale = 1 + progress; // 1 -> 2
+                        currOpacity = 1 - progress;
+                        break;
+                    case 'zoom_out':
+                        currScale = 1 - (progress * 0.5); // 1 -> 0.5
+                        currOpacity = 1 - progress;
+                        break;
+                    case 'wipe_left':
+                    case 'wipe_right':
+                    case 'circle_open':
+                        // Bunlarda alttaki resim sabit kalabilir veya hafif kararabilir
+                        break;
+                }
+
+                // Clip logic for wipe/circle (reverse logic usually for outgoing, but here we construct simpler: draw outgoing normal, then draw incoming on top)
+                drawSingleImage(currentSlide.img, currOpacity, { x: currX, y: currY, scale: currScale });
+                ctx.restore();
+
+
+                // 2. Sıradaki Resim (Giriş Yapan)
+                ctx.save();
+                let nextOpacity = 1; // Genelde 1, fade hariç
+                let nextX = 0, nextY = 0, nextScale = 1;
+
+                // Özel Clipping (Maskeleme) işlemleri
+                if (transitionType === 'wipe_left') {
+                    ctx.beginPath();
+                    ctx.rect(canvas.width * (1 - progress), 0, canvas.width * progress, canvas.height);
+                    ctx.clip();
+                } else if (transitionType === 'wipe_right') {
+                    ctx.beginPath();
+                    ctx.rect(0, 0, canvas.width * progress, canvas.height);
+                    ctx.clip();
+                } else if (transitionType === 'circle_open') {
+                    const maxRadius = Math.sqrt(Math.pow(canvas.width, 2) + Math.pow(canvas.height, 2)) / 2;
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, canvas.height / 2, maxRadius * progress, 0, Math.PI * 2);
+                    ctx.clip();
+                }
+
+                // Transform işlemleri
+                switch (transitionType) {
+                    case 'fade':
+                        nextOpacity = progress;
+                        break;
+                    case 'slide_left':
+                        nextX = canvas.width * (1 - progress);
+                        break;
+                    case 'slide_right':
+                        nextX = -canvas.width * (1 - progress);
+                        break;
+                    case 'slide_up':
+                        nextY = canvas.height * (1 - progress);
+                        break;
+                    case 'slide_down':
+                        nextY = -canvas.height * (1 - progress);
+                        break;
+                    case 'zoom_in':
+                        nextOpacity = progress;
+                        nextScale = 0.5 + (0.5 * progress); // 0.5 -> 1
+                        break;
+                    case 'zoom_out':
+                        nextOpacity = progress;
+                        nextScale = 1.5 - (0.5 * progress); // 1.5 -> 1
+                        break;
+                }
+
+                drawSingleImage(nextSlide.img, nextOpacity, { x: nextX, y: nextY, scale: nextScale });
+                ctx.restore();
+            }
+        }
+
+        function drawSingleImage(img, opacity, transform = { x: 0, y: 0, scale: 1 }) {
+            if (!img) return;
+
+            ctx.save();
+            ctx.globalAlpha = opacity;
+
+            // Translate & Scale center pivot
+            if (transform.x !== 0 || transform.y !== 0 || transform.scale !== 1) {
+                ctx.translate(canvas.width / 2 + transform.x, canvas.height / 2 + transform.y);
+                ctx.scale(transform.scale, transform.scale);
+                ctx.translate(-canvas.width / 2, -canvas.height / 2);
+            }
+
+            // 1. Arka Plan (Blur)
+            const scaleFactor = Math.max(canvas.width / img.width, canvas.height / img.height);
+            const bgW = img.width * scaleFactor;
+            const bgH = img.height * scaleFactor;
+            const bgX = (canvas.width - bgW) / 2;
+            const bgY = (canvas.height - bgH) / 2;
+
+            ctx.filter = 'blur(15px) brightness(0.4)';
+            ctx.drawImage(img, bgX, bgY, bgW, bgH);
+            ctx.filter = 'none';
+
+            // 2. Ön Plan (Fit)
+            const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
+            const w = img.width * ratio;
+            const h = img.height * ratio;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+
+            // Gölge
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 20;
+            ctx.drawImage(img, x, y, w, h);
+            ctx.shadowBlur = 0;
+
+            ctx.restore();
+        }
+
+
+        // --- Önizleme & Video Oluşturma ---
+
+        function togglePreview() {
+            if (slides.length === 0) {
+                showCustomAlert("Önce fotoğraf ekleyin.");
+                return;
+            }
+
+            if (isPreviewing) {
+                // Durdur
+                isPreviewing = false;
+                cancelAnimationFrame(previewReqId);
+                document.getElementById('previewBtn').innerHTML = '<i class="fas fa-play mr-2"></i> Önizle';
+                document.getElementById('previewBtn').classList.replace('bg-red-600', 'bg-gray-700');
+                if (activeAudioSource) {
+                    try { activeAudioSource.stop(); } catch (e) { }
+                    activeAudioSource = null;
+                }
+                if (slides.length > 0) drawFrame(0); // İlk kareye dön
+            } else {
+                // Başlat
+                isPreviewing = true;
+                document.getElementById('previewBtn').innerHTML = '<i class="fas fa-stop mr-2"></i> Durdur';
+                document.getElementById('previewBtn').classList.replace('bg-gray-700', 'bg-red-600');
+
+                // Müziği oynat
+                if (audioBuffer && audioContext) {
+                    const musicSelect = document.getElementById('musicSelect');
+                    const musicName = musicSelect.options[musicSelect.selectedIndex].text;
+                    logAction("Müzik Oynatılıyor", musicName);
+
+                    if (activeAudioSource) { try { activeAudioSource.stop(); } catch (e) { } }
+                    activeAudioSource = audioContext.createBufferSource();
+                    activeAudioSource.buffer = audioBuffer;
+                    activeAudioSource.loop = true;
+                    activeAudioSource.loopStart = trimStart;
+                    activeAudioSource.loopEnd = trimEnd;
+                    activeAudioSource.connect(audioContext.destination);
+                    activeAudioSource.start(0, trimStart);
+                }
+
+                const startTime = performance.now();
+                const totalVideoDuration = slides.length * slideDuration;
+
+                function loop(now) {
+                    if (!isPreviewing) return;
+                    const elapsed = now - startTime;
+
+                    if (elapsed >= totalVideoDuration) {
+                        togglePreview(); // Video bitince durdur
+                        const playhead = document.getElementById('musicPlayhead');
+                        if (playhead) playhead.classList.add('hidden');
+                        return;
+                    }
+
+                    // Müzik İlerleme Çubuğu Güncellemesi
+                    if (audioBuffer) {
+                        const playhead = document.getElementById('musicPlayhead');
+                        playhead.classList.remove('hidden');
+
+                        const trimDuration = trimEnd - trimStart;
+                        // Müzik döngüsel çaldığı için modülo kullanıyoruz
+                        // Müzik hep trimStart noktasından başlar
+                        const currentMusicTime = trimStart + ((elapsed / 1000) % trimDuration);
+
+                        const total = audioBuffer.duration;
+                        const progressPercent = (currentMusicTime / total) * 100;
+                        playhead.style.left = `${progressPercent}%`;
+                    }
+
+                    drawFrame(elapsed);
+                    previewReqId = requestAnimationFrame(loop);
+                }
+                previewReqId = requestAnimationFrame(loop);
+            }
+        }
+
+        function drawSingleImage(img, globalAlpha, { x, y, scale }) {
+            ctx.globalAlpha = globalAlpha;
+            const imgAspect = img.width / img.height;
+            const canvasAspect = canvas.width / canvas.height;
+            let renderWidth, renderHeight;
+
+            if (imgAspect > canvasAspect) {
+                renderWidth = canvas.width;
+                renderHeight = canvas.width / imgAspect;
+            } else {
+                renderHeight = canvas.height;
+                renderWidth = canvas.height * imgAspect;
+            }
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            const finalW = renderWidth * scale;
+            const finalH = renderHeight * scale;
+
+            ctx.drawImage(img, centerX - finalW / 2 + x, centerY - finalH / 2 + y, finalW, finalH);
+            ctx.globalAlpha = 1.0;
+        }
+
+        // --- Video Oluşturma (WebM Kaydı) ---
+
+        // İptal işlemi için global referanslar
+        let creationInterval = null;
+        let creationRecorder = null;
+        let creationAudioSource = null;
+
+        // UI Kilitleme/Açma Yardımcısı
+        function toggleUIInteractivity(active) {
+            // 1. Form Elemanları
+            const formElements = document.querySelectorAll('button, input, select');
+            const createBtn = document.getElementById('createBtn');
+
+            formElements.forEach(el => {
+                if (el !== createBtn) {
+                    el.disabled = !active;
+                    if (!active) el.classList.add('opacity-50', 'cursor-not-allowed');
+                    else el.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
+
+            // 2. Listeler ve Alanlar
+            const idsToToggle = ['imageList', 'dropZone', 'previewBtn'];
+            idsToToggle.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (!active) el.classList.add('pointer-events-none', 'opacity-50');
+                    else el.classList.remove('pointer-events-none', 'opacity-50');
+                }
+            });
+        }
+
+        function cancelVideoCreation() {
+            logAction("Video Oluşturma Temizliği/İptali");
+            if (creationInterval) clearInterval(creationInterval);
+
+            if (creationRecorder && creationRecorder.state !== 'inactive') {
+                creationRecorder.onstop = null;
+                creationRecorder.stop();
+            }
+
+            if (creationAudioSource) {
+                try { creationAudioSource.stop(); } catch (e) { }
+            }
+
+            // UI Reset
+            document.getElementById('loadingOverlay').classList.add('hidden');
+
+            showCustomAlert("Video oluşturma işlemi iptal edildi.");
+            logAction("İşlem İptal Edildi");
+
+            isPreviewing = false;
+
+            // UI Kilidini Aç
+            toggleUIInteractivity(true);
+        }
+
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({ log: true });
+
+        // --- Video Oluşturma (Garantili Kare Kaydı v3.14) ---
+        async function createVideo() {
+            logAction("Video Oluşturma Başladı (Garantili Mod)");
+            if (slides.length === 0) {
+                showCustomAlert("Fotoğraf yok!");
+                return;
+            }
+
+            // UI Kilitle
+            toggleUIInteractivity(false);
+
+            // Progress Bar Elementleri
+            const pBar = document.getElementById('loadingProgressBar');
+            const pPercent = document.getElementById('loadingPercent');
+            const pStatus = document.getElementById('loadingStatusText');
+            const overlay = document.getElementById('loadingOverlay');
+
+            pBar.style.width = '0%';
+            pPercent.innerText = '0%';
+            pStatus.innerText = 'Kayıt Hazırlanıyor...';
+            overlay.classList.remove('hidden');
+
+            const btn = document.getElementById('createBtn');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Kareler İşleniyor...';
+
+            if (isPreviewing) togglePreview();
+
+            // Müzik Hazırlığı (Burada sadece buffer'ı tutuyoruz, canlı çalmıyoruz)
+            if (!audioBuffer) {
+                showCustomAlert("Lütfen bir müzik seçin!");
+                cancelVideoCreation();
+                return;
+            }
+
+            // Canvas Stream (30 FPS sabit meta verisi ile)
+            const canvasStream = canvas.captureStream(30);
+
+            // SADECE Görüntü Kaydedici
+            const mimeType = MediaRecorder.isTypeSupported('video/webm; codecs=vp9')
+                ? 'video/webm; codecs=vp9'
+                : 'video/webm';
+
+            logAction("Video Encoder Başlatıldı", mimeType);
+
+            // AudioBitsPerSecond yok çünkü ses yok
+            const recorder = new MediaRecorder(canvasStream, {
+                mimeType: mimeType,
+                videoBitsPerSecond: 5000000
+            });
+            creationRecorder = recorder;
+
+            const chunks = [];
+            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+            recorder.onstop = async () => {
+                logAction("Video Kareleri Kaydedildi (Sessiz)");
+                pStatus.innerText = "Ses ve Görüntü Birleştiriliyor...";
+                recordedBlob = new Blob(chunks, { type: 'video/webm' });
+
+                // Temizlik
+                if (previewReqId) cancelAnimationFrame(previewReqId);
+
+                // Montaj İşlemi
+                await convertToMp4();
+            };
+
+            recorder.start();
+            isCreatingVideo = true;
+
+            // Frame Döngüsü (Sabit Adım - Garantili Süre)
+            const fps = 30;
+            const frameTime = 1000 / fps; // ~33.33ms
+            const totalDuration = slides.length * slideDuration; // ms
+            let currentFrame = 0;
+
+            function loop() {
+                if (!isCreatingVideo) return;
+
+                // Elapsed süreyi gerçek zamanla değil, kare sayısıyla hesapla
+                // Bu sayede bilgisayar donarsa döngü bekler ama video süresi şaşmaz.
+                const elapsed = currentFrame * frameTime;
+
+                if (elapsed >= totalDuration) {
+                    recorder.stop();
+                    return;
+                }
+
+                // İlerleme yüzdesi
+                const progress = Math.min(100, Math.round((elapsed / totalDuration) * 100));
+
+                pBar.style.width = `${progress}%`;
+                pPercent.innerText = `%${progress}`;
+                pStatus.innerText = `Kareler Çiziliyor... (${Math.round(elapsed / 1000)}s / ${Math.round(totalDuration / 1000)}s)`;
+
+                // Çiz
+                drawFrame(elapsed);
+
+                // Sonraki kare
+                currentFrame++;
+
+                previewReqId = requestAnimationFrame(loop);
+            }
+
+            // Döngüyü başlat
+            loop();
+
+            btn.innerHTML = '<i class="fas fa-times mr-2"></i> İptal Et';
+            btn.classList.replace('bg-green-600', 'bg-red-600');
+            btn.onclick = () => cancelVideoCreation();
+        }
+
+        async function convertToMp4() {
+            logAction("Montaj ve Dönüştürme Başladı");
+            if (!recordedBlob) {
+                showCustomAlert("Hata: Video verisi yok!");
+                return;
+            }
+
+            const pStatus = document.getElementById('loadingStatusText');
+            if (pStatus) pStatus.innerText = "Ses Dosyası Hazırlanıyor...";
+
+            try {
+                if (!ffmpeg.isLoaded()) {
+                    if (pStatus) pStatus.innerText = "FFmpeg Motoru Yükleniyor...";
+                    await ffmpeg.load();
+                }
+
+                if (pStatus) pStatus.innerText = "Dosyalar İşleniyor...";
+
+                // 1. Videoyu Yaz (Sessiz)
+                ffmpeg.FS('writeFile', 'video.webm', await fetchFile(recordedBlob));
+
+                // 2. Sesi Hazırla (Offline Render)
+                const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+                const duration = trimEnd - trimStart;
+                const sampleRate = audioBuffer.sampleRate;
+                // Minimum süre kontrolü
+                if (duration <= 0) throw new Error("Ses süresi geçersiz.");
+
+                // Offline Context ile kesiti render et (En temiz yol)
+                const offlineCtx = new OfflineCtx(2, sampleRate * duration, sampleRate); // Force Stereo
+                const source = offlineCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineCtx.destination);
+                source.start(0, trimStart, duration);
+
+                const renderedBuffer = await offlineCtx.startRendering();
+
+                // WAV Encode
+                const left = renderedBuffer.getChannelData(0);
+                const right = renderedBuffer.numberOfChannels > 1 ? renderedBuffer.getChannelData(1) : left;
+                const interleaved = interleave(left, right);
+                const wavBytes = encodeWAV(interleaved, 1, sampleRate, 2, 16); // format 1=PCM, 2 channels, 16 bit
+
+                ffmpeg.FS('writeFile', 'audio.wav', new Uint8Array(wavBytes));
+
+                if (pStatus) pStatus.innerText = "Ses ve Görüntü Birleştiriliyor...";
+
+                // 3. Birleştir (Video + Ses -> MP4)
+                await ffmpeg.run(
+                    '-i', 'video.webm',
+                    '-stream_loop', '-1', '-i', 'audio.wav',  // Sesi döngüye al
+                    '-c:v', 'libx264', '-preset', 'ultrafast', // Videoyu MP4 yap
+                    '-c:a', 'aac', '-b:a', '192k',             // Sesi AAC yap
+                    '-shortest',                               // En kısa olanda bitir (Video süresi)
+                    '-map', '0:v:0', '-map', '1:a:0',          // Mapping
+                    'output.mp4'
+                );
+
+                const data = ffmpeg.FS('readFile', 'output.mp4');
+                const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
+                const mp4Url = URL.createObjectURL(mp4Blob);
+
+                // İndir
+                const a = document.createElement('a');
+                a.href = mp4Url;
+                a.download = `VideoMaker_v3.14_${new Date().getTime()}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                const pBar = document.getElementById('loadingProgressBar');
+                const pPercent = document.getElementById('loadingPercent');
+                if (pBar) pBar.style.width = '100%';
+                if (pPercent) pPercent.innerText = '100%';
+
+                showCustomAlert(`Video başarıyla oluşturuldu!\nİndirme otomatik başlatıldı.`);
+
+            } catch (error) {
+                console.error("Dönüşüm hatası:", error);
+                logAction("Dönüşüm Hatası", error.message);
+                showCustomAlert("Dönüştürme hatası: " + error.message);
+            } finally {
+                cancelVideoCreation();
+            }
+        }
+
+        // Helper: Interleave (Stereo için)
+        function interleave(leftChannel, rightChannel) {
+            const length = leftChannel.length + rightChannel.length;
+            const result = new Float32Array(length);
+            let inputIndex = 0;
+            for (let index = 0; index < length;) {
+                result[index++] = leftChannel[inputIndex];
+                result[index++] = rightChannel[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+
+        // --- SES İŞLEME YARDIMCILARI ---
+        source.loop = true;
+        source.loopStart = start;
+        source.loopEnd = end;
+
+        source.connect(ctx.destination);
+        source.start(0, start); // Kırpılan yerden başla
+
+        const renderedBuffer = await ctx.startRendering();
+
+        // 2. WAV Encode
+        return audioBufferToWav(renderedBuffer);
+        }
+
+        // WAV Encoder (Minimal)
+        function audioBufferToWav(buffer) {
+            const numChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const format = 1; // PCM
+            const bitDepth = 16;
+
+            let result;
+            if (numChannels === 2) {
+                result = interleave(buffer.getChannelData(0), buffer.getChannelData(1));
+            } else {
+                result = buffer.getChannelData(0);
+            }
+
+            return encodeWAV(result, format, sampleRate, numChannels, bitDepth);
+        }
+
+        function interleave(inputL, inputR) {
+            const length = inputL.length + inputR.length;
+            const result = new Float32Array(length);
+            let index = 0;
+            let inputIndex = 0;
+            while (index < length) {
+                result[index++] = inputL[inputIndex];
+                result[index++] = inputR[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+
+        function encodeWAV(samples, format, sampleRate, numChannels, bitDepth) {
+            const bytesPerSample = bitDepth / 8;
+            const blockAlign = numChannels * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+            const view = new DataView(buffer);
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, format, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * blockAlign, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitDepth, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * bytesPerSample, true);
+
+            floatTo16BitPCM(view, 44, samples);
+            return buffer;
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+        }
+
+        function floatTo16BitPCM(output, offset, input) {
+            for (let i = 0; i < input.length; i++, offset += 2) {
+                let s = Math.max(-1, Math.min(1, input[i]));
+                output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+        }
+
+        function showCustomAlert(message) {
+            const overlay = document.getElementById('customAlertOverlay');
+            const box = document.getElementById('customAlertBox');
+            const msgEl = document.getElementById('customAlertMessage');
+
+            msgEl.innerText = message;
+            overlay.classList.remove('hidden');
+
+            // Temizlik (Eski sürüme dönüşte style kalıntılarını sil)
+            box.style = "";
+            const arrow = document.getElementById('alertArrow');
+            if (arrow) arrow.classList.add('hidden');
+
+            // Animasyon Frame'i bekle
+            requestAnimationFrame(() => {
+                overlay.classList.remove('opacity-0');
+                box.classList.remove('opacity-0', 'scale-90');
+                box.classList.add('scale-100');
+            });
+        }
+
+        function closeCustomAlert() {
+            const overlay = document.getElementById('customAlertOverlay');
+            const box = document.getElementById('customAlertBox');
+
+            overlay.classList.add('opacity-0');
+            box.classList.remove('scale-100');
+            box.classList.add('scale-90', 'opacity-0');
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        function showSoundsPath() {
+            const path = "/Users/erdem/.gemini/antigravity/scratch/VideoMakerEA/sounds";
+            logAction("Sounds Yolu İstendi");
+            prompt("Sounds klasör yolu (Kopyalamak için Ctrl+C / Cmd+C):", path);
+        }
+    </script>
+    <!-- Yükleniyor Overlay (Modern - Hibrit Stil) -->
+    <div id="loadingOverlay"
+        class="fixed inset-0 hidden flex flex-col items-center justify-center text-white transition-opacity duration-300"
+        style="background-color: rgba(17, 24, 39, 0.9); backdrop-filter: blur(12px); z-index: 9999;">
+
+        <!-- İkon ve Başlık -->
+        <div class="mb-8 text-center">
+            <div class="relative inline-block">
+                <i class="fas fa-compact-disc fa-spin text-6xl relative z-10" style="color: #f97316;"></i>
+            </div>
+            <h2 class="text-3xl font-bold mt-6 tracking-tight">Videonuz Hazırlanıyor</h2>
+            <p id="loadingStatusText" class="text-gray-400 mt-2 text-sm font-medium uppercase tracking-wider">İşlem
+                başlatılıyor...</p>
+        </div>
+
+        <!-- Progress Bar Container -->
+        <div class="w-full max-w-md px-6">
+            <div class="relative h-2 bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                <div id="loadingProgressBar"
+                    class="absolute top-0 left-0 h-full w-0 transition-all duration-300 ease-out"
+                    style="background: linear-gradient(to right, #f97316, #fbbf24); box-shadow: 0 0 10px rgba(249,115,22,0.5);">
+                </div>
+            </div>
+            <div class="flex justify-between mt-3 text-xs font-mono text-gray-500">
+                <span id="loadingTimeRemaining">Lütfen bekleyiniz...</span>
+                <span id="loadingPercent" class="font-bold text-lg" style="color: #fb923c;">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal (Hibrit Stil) -->
+    <div id="customAlertOverlay"
+        class="fixed inset-0 hidden flex items-center justify-center transition-opacity duration-300 opacity-0"
+        style="background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 9990;">
+
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 transform transition-all duration-300 scale-90 opacity-0 relative"
+            id="customAlertBox"
+            style="background-color: white; border-radius: 1rem; padding: 1.5rem; max-width: 24rem; width: 100%;">
+
+            <!-- Ok İşareti (Disable) -->
+            <div id="alertArrow" class="absolute w-4 h-4 bg-white transform rotate-45 hidden z-10"></div>
+
+            <div class="flex flex-col items-center text-center relative z-20">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mb-4 text-xl shadow-sm"
+                    style="background-color: #ffedd5; color: #f97316; width: 3rem; height: 3rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h3 class="text-lg font-bold mb-2"
+                    style="font-size: 1.125rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem;">Video Maker
+                    Bildirimi</h3>
+                <p id="customAlertMessage" class="text-sm mb-6 leading-relaxed"
+                    style="font-size: 0.875rem; color: #4b5563; margin-bottom: 1.5rem; line-height: 1.625;">Mesaj
+                    içeriği buraya.</p>
+
+                <button onclick="closeCustomAlert()"
+                    class="w-full font-bold py-3 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-white"
+                    style="width: 100%; background: linear-gradient(to right, #f97316, #ef4444); color: white; padding-top: 0.75rem; padding-bottom: 0.75rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; border: none;">
+                    Tamam
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
