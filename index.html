@@ -111,7 +111,7 @@
     <!-- Versiyon Bilgisi -->
     <div
         class="absolute top-2 right-2 md:top-5 md:right-5 bg-white/90 backdrop-blur text-orange-600 px-4 py-1.5 rounded-full font-mono text-sm font-bold border-2 border-orange-200 shadow-md transform hover:scale-105 transition-all cursor-default z-50">
-        v3.14
+        v3.15.1
     </div>
 
     <!-- Başlık -->
@@ -132,16 +132,20 @@
                     adet</span>
             </div>
 
-            <!-- Yükleme Kutusu -->
-            <div class="upload-box rounded-xl p-4 text-center cursor-pointer relative flex flex-col items-center justify-center bg-white shadow-sm mb-4 shrink-0 hover:bg-orange-50 transition border border-dashed border-orange-300"
-                id="imgDropZone" onclick="document.getElementById('imageInput').click()">
+            <!-- Yükleme Kutusu (Hayalet Input v3.15) -->
+            <div class="upload-box rounded-xl p-4 text-center cursor-pointer relative flex flex-col items-center justify-center bg-white shadow-sm mb-4 shrink-0 hover:bg-orange-50 transition border border-dashed border-orange-300 group"
+                id="imgDropZone">
 
-                <input type="file" id="imageInput" multiple accept="image/*" class="hidden"
-                    onchange="handleImageUpload(event)">
-                <div class="text-orange-500 mb-1">
+                <!-- Fiziksel Input (En Üstte ve Şeffaf) -->
+                <input type="file" id="imageInput" multiple accept="image/*"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50"
+                    onchange="handleImageUpload(event)" title="Fotoğraf seçmek için tıklayın">
+
+                <div class="text-orange-500 mb-1 group-hover:scale-110 transition-transform duration-200">
                     <i class="fas fa-plus-circle text-2xl"></i>
                 </div>
-                <p class="text-sm text-gray-700 font-bold">Fotoğraf Ekle</p>
+                <p class="text-sm text-gray-700 font-bold group-hover:text-orange-600 transition-colors">Fotoğraf Ekle
+                </p>
                 <p class="text-[10px] text-gray-400">veya sürükle bırak</p>
             </div>
 
@@ -1374,18 +1378,6 @@
         }
 
         // --- SES İŞLEME YARDIMCILARI ---
-        source.loop = true;
-        source.loopStart = start;
-        source.loopEnd = end;
-
-        source.connect(ctx.destination);
-        source.start(0, start); // Kırpılan yerden başla
-
-        const renderedBuffer = await ctx.startRendering();
-
-        // 2. WAV Encode
-        return audioBufferToWav(renderedBuffer);
-        }
 
         // WAV Encoder (Minimal)
         function audioBufferToWav(buffer) {
