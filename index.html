@@ -111,7 +111,7 @@
     <!-- Versiyon Bilgisi -->
     <div
         class="absolute top-2 right-2 md:top-5 md:right-5 bg-white/90 backdrop-blur text-orange-600 px-4 py-1.5 rounded-full font-mono text-sm font-bold border-2 border-orange-200 shadow-md transform hover:scale-105 transition-all cursor-default z-50">
-        v3.15.1
+        v3.15.2
     </div>
 
     <!-- Başlık -->
@@ -1355,12 +1355,16 @@
 
                 showCustomAlert(`Video başarıyla oluşturuldu!\nİndirme otomatik başlatıldı.`);
 
+                // Başarılı bitiş: Sessizce UI'ı sıfırla
+                cancelVideoCreation(true);
+
             } catch (error) {
                 console.error("Dönüşüm hatası:", error);
                 logAction("Dönüşüm Hatası", error.message);
                 showCustomAlert("Dönüştürme hatası: " + error.message);
-            } finally {
-                cancelVideoCreation();
+
+                // Hatalı bitiş: UI'ı sıfırla (sessiz, çünkü alert zaten gösterdik)
+                cancelVideoCreation(true);
             }
         }
 

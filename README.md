@@ -7,7 +7,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 
 <div align="center">
   
-  ### ✨ Heman Deneyin ✨
+  ### ✨ Hemen Deneyin ✨
   
   <a href="https://videomakerea-c41031.gitlab.io/" target="_blank">
     <img src="https://img.shields.io/badge/🚀_CANLI_DEMOYU_BAŞLAT-FF4500?style=for-the-badge&logo=google-chrome&logoColor=white&labelColor=111827" height="60" alt="Demo Başlat" />
