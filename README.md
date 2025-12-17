@@ -9,7 +9,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
   
   ### ✨ Hemen Deneyin ✨
   
-  <a href="https://videomakerea-c41031.gitlab.io/" target="_blank">
+  <a href="https://erdemalpar.gitlab.io/videomakerea/" target="_blank">
     <img src="https://img.shields.io/badge/GitLab_Pages-🚀_CANLI_DEMO-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white&labelColor=111827" height="55" alt="GitLab Demo" />
   </a>
   &nbsp;&nbsp;
@@ -46,7 +46,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 
 ### Canlı Demo
 Uygulamayı hemen denemek için:
-- **GitLab Pages:** [https://videomakerea-c41031.gitlab.io/](https://videomakerea-c41031.gitlab.io/)
+- **GitLab Pages:** [https://erdemalpar.gitlab.io/videomakerea/](https://erdemalpar.gitlab.io/videomakerea/)
 - **GitHub Pages:** [https://erdemalpar.github.io/VideoMakerEA/](https://erdemalpar.github.io/VideoMakerEA/)
 
 ### Yerel Kurulum
