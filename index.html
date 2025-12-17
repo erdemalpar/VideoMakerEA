@@ -111,7 +111,7 @@
     <!-- Versiyon Bilgisi -->
     <div
         class="absolute top-2 right-2 md:top-5 md:right-5 bg-white/90 backdrop-blur text-orange-600 px-4 py-1.5 rounded-full font-mono text-sm font-bold border-2 border-orange-200 shadow-md transform hover:scale-105 transition-all cursor-default z-50">
-        v3.31
+        v3.33
     </div>
 
     <!-- Başlık -->
@@ -922,28 +922,37 @@
 
             // Index Mantığı
             if (isFitMode && hasMusic) {
-                // "Müziğe Yay": Taşarsa son karede kal
+                // "Müziğe Yay" modu: Son resimde dur (taşmayı engelle)
                 if (slideIndex >= slides.length) slideIndex = slides.length - 1;
             } else if (hasMusic) {
-                // "Döngü": Başa sar
+                // "Döngü" modu: Müzik varsa başa sar
                 slideIndex = slideIndex % slides.length;
             } else {
                 // Müzik Yok: Taşarsa son karede kal
                 if (slideIndex >= slides.length) slideIndex = slides.length - 1;
             }
+            // Negatif kontrolü
             if (slideIndex < 0) slideIndex = 0;
 
             const currentSlide = slides[slideIndex];
-            if (!currentSlide || !currentSlide.img) return;
+
+            // v3.33: KRİTİK GÜVENLİK
+            // Eğer resim verisi yoksa, ekranı SİLMİYORUZ.
+            // Böylece bir önceki kare ekranda kalır (Gri ekran yerine donma olur).
+            if (!currentSlide || !currentSlide.img) {
+                // Sadece konsola yaz (debug)
+                // console.warn(`Kayıp Kare: Index ${slideIndex}, Zaman ${currentTime}`);
+                return;
+            }
 
             // --- 2. TEMİZLİK ---
+            // Sadece çizecek verimiz varsa temizliyoruz
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#000";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // --- 3. SONRAKİ SLAYT ---
             let nextIndex = slideIndex + 1;
-            // Döngü modundaysak ve sona geldiysek başa sar
             if (hasMusic && !isFitMode) {
                 nextIndex = nextIndex % slides.length;
             }
@@ -953,14 +962,12 @@
             // --- 4. GEÇİŞ ZAMANI ---
             const timeInSlide = currentTime % slideDuration;
 
-            // Dinamik Geçiş Süresi (Slayt kısaysa geçişi kısalt)
             let dynamicTransDur = Math.min(transitionDuration, slideDuration * 0.4);
-            if (slideDuration < 500) dynamicTransDur = 0; // Çok kısaysa efekt yok
+            if (slideDuration < 500) dynamicTransDur = 0;
 
             const transStart = slideDuration - dynamicTransDur;
             let inTransition = (timeInSlide >= transStart) && (dynamicTransDur > 0) && nextSlide;
 
-            // Son karedeysek (loop yoksa) geçiş olmaz
             if (!nextSlide) inTransition = false;
 
             // --- 5. ÇİZİM ---
@@ -975,6 +982,7 @@
                 ctx.save();
                 let currOpacity = 1;
                 let currX = 0, currY = 0, currScale = 1;
+                // v3.30 Fix: transform default values enforced in drawSingleImage
 
                 switch (transitionType) {
                     case 'fade':
@@ -1010,7 +1018,6 @@
                 let nextOpacity = 1;
                 let nextX = 0, nextY = 0, nextScale = 1;
 
-                // Clipping
                 if (transitionType === 'wipe_left') {
                     ctx.beginPath();
                     ctx.rect(canvas.width * (1 - progress), 0, canvas.width * progress, canvas.height);
@@ -1026,7 +1033,6 @@
                     ctx.clip();
                 }
 
-                // Transform
                 switch (transitionType) {
                     case 'fade':
                         nextOpacity = progress;
@@ -1056,6 +1062,18 @@
                 drawSingleImage(nextSlide.img, nextOpacity, { x: nextX, y: nextY, scale: nextScale });
                 ctx.restore();
             }
+
+            // v3.33: DEBUG OVERLAY (Hata Ayıklama)
+            // Bu yazı video üzerinde görünecek.
+            /*
+            ctx.save();
+            ctx.font = "bold 24px Arial";
+            ctx.fillStyle = "red";
+            ctx.shadowColor="black";
+            ctx.shadowBlur=4;
+            ctx.fillText(`T:${(currentTime/1000).toFixed(1)}s | Idx:${slideIndex}/${slides.length} | Dur:${(slideDuration/1000).toFixed(1)}s`, 20, 40);
+            ctx.restore();
+            */
         }
 
         function drawSingleImage(img, opacity, transform = { x: 0, y: 0, scale: 1 }) {
