@@ -10,7 +10,11 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
   ### ✨ Hemen Deneyin ✨
   
   <a href="https://videomakerea-c41031.gitlab.io/" target="_blank">
-    <img src="https://img.shields.io/badge/🚀_CANLI_DEMOYU_BAŞLAT-FF4500?style=for-the-badge&logo=google-chrome&logoColor=white&labelColor=111827" height="60" alt="Demo Başlat" />
+    <img src="https://img.shields.io/badge/GitLab_Pages-🚀_CANLI_DEMO-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white&labelColor=111827" height="55" alt="GitLab Demo" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://erdemalpar.github.io/VideoMakerEA/" target="_blank">
+    <img src="https://img.shields.io/badge/GitHub_Pages-🚀_CANLI_DEMO-181717?style=for-the-badge&logo=github&logoColor=white&labelColor=111827" height="55" alt="GitHub Demo" />
   </a>
 
   <br><br>
@@ -41,7 +45,9 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 ## 🚀 Hızlı Başlangıç
 
 ### Canlı Demo
-Uygulamayı hemen denemek için: [https://videomakerea-c41031.gitlab.io/](https://videomakerea-c41031.gitlab.io/)
+Uygulamayı hemen denemek için:
+- **GitLab Pages:** [https://videomakerea-c41031.gitlab.io/](https://videomakerea-c41031.gitlab.io/)
+- **GitHub Pages:** [https://erdemalpar.github.io/VideoMakerEA/](https://erdemalpar.github.io/VideoMakerEA/)
 
 ### Yerel Kurulum
 
