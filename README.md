@@ -9,7 +9,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
   
   ### ✨ Hemen Deneyin ✨
   
-  <a href="https://erdemalpar.gitlab.io/videomakerea/" target="_blank">
+  <a href="https://erdemalpar.gitlab.io/VideoMakerEA/" target="_blank">
     <img src="https://img.shields.io/badge/GitLab_Pages-🚀_CANLI_DEMO-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white&labelColor=111827" height="55" alt="GitLab Demo" />
   </a>
   &nbsp;&nbsp;
@@ -19,7 +19,7 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 
   <br><br>
   
-  [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white)](https://gitlab.com/erdemalpar/videomakerea)
+  [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=for-the-badge&logo=gitlab&logoColor=white)](https://gitlab.com/erdemalpar/VideoMakerEA)
   [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/erdemalpar/VideoMakerEA)
   
   <br>
@@ -46,15 +46,15 @@ Donma yok, kare atlama yok. Garantili kare işleme teknolojisi ile tarayıcını
 
 ### Canlı Demo
 Uygulamayı hemen denemek için:
-- **GitLab Pages:** [https://erdemalpar.gitlab.io/videomakerea/](https://erdemalpar.gitlab.io/videomakerea/)
+- **GitLab Pages:** [https://erdemalpar.gitlab.io/VideoMakerEA/](https://erdemalpar.gitlab.io/VideoMakerEA/)
 - **GitHub Pages:** [https://erdemalpar.github.io/VideoMakerEA/](https://erdemalpar.github.io/VideoMakerEA/)
 
 ### Yerel Kurulum
 
 #### GitLab'dan klonlama:
 ```bash
-git clone https://gitlab.com/erdemalpar/videomakerea.git
-cd videomakerea
+git clone https://gitlab.com/erdemalpar/VideoMakerEA.git
+cd VideoMakerEA
 python3 server.py
 ```
 
